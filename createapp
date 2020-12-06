@@ -28,9 +28,10 @@ while true;do
   case $step in
     1)
       echo "Welcome to the Create App wizard!
-With a few simple steps, your project can take advantage of Pi-Apps"\'" features and be displayed in the application list." | yad --text-info --fontname=12 --wrap --show-uri \
+With a few simple steps, your project can take advantage of Pi-Apps"\'" features and be displayed in the application list.
+This wizard will save your work as you go." | yad --text-info --fontname=12 --wrap --show-uri \
         --image="${DIRECTORY}/icons/in-progress.png" --image-on-top \
-        --title="Create App Wizard" --window-icon="${DIRECTORY}/icons/logo.png" --center --width=310 --height=$windowheight \
+        --title="Create App Wizard" --window-icon="${DIRECTORY}/icons/logo.png" --center --width=310 --height=$((windowheight-100)) \
         --button=Cancel!"${DIRECTORY}/icons/exit.png":1 \
         --button=Next!"${DIRECTORY}/icons/forward.png":0 || exit 0
       step=$((step+1))
@@ -69,13 +70,14 @@ With a few simple steps, your project can take advantage of Pi-Apps"\'" features
       fi
       
       output="$(yad --form \
-        --title="Create App: Step $step" --window-icon="${DIRECTORY}/icons/logo.png" --center --width=310 --height=$windowheight \
+        --title="Create App: Step $step" --window-icon="${DIRECTORY}/icons/logo.png" --center --width=310 --height=$((windowheight+200)) \
         --text="Step ${step}: enter some information. The name field is mandatory." \
         --field="Name of app:$([ ! -z "$namelocked" ]&&echo ':RO')"  "$name" \
         "$iconfield" "$iconpath" \
         --field="Website:" "$(cat "${DIRECTORY}/apps/${name}/website" 2>/dev/null || echo '')" \
         "$compatibilityentry" "$compatibilitypreset" \
         --field="Description:":TXT "$(cat "${DIRECTORY}/apps/${name}/description" || cat "${DIRECTORY}/apps/template/description")" \
+        --field="Credits:":TXT "$(cat "${DIRECTORY}/apps/${name}/credits" || cat "${DIRECTORY}/apps/template/credits")" \
         $([ ! -z $editing ]&&echo "--button=Save!${DIRECTORY}/icons/save.png:4") \
         --button=Previous!"${DIRECTORY}/icons/back.png":2 \
         --button=Next!"${DIRECTORY}/icons/forward.png":0 \
@@ -93,6 +95,7 @@ With a few simple steps, your project can take advantage of Pi-Apps"\'" features
         website="$(echo "$output" | sed -n '3p')"
         compatibility="$(echo "$output" | sed -n '4p')"
         description="$(echo -e "$(echo "$output" | sed -n '5p')")"
+        credits="$(echo -e "$(echo "$output" | sed -n '6p')")"
         
         #convert compatibility var into machine-readable
         if [ "$compatibility" == "64bit and 32bit" ];then
@@ -156,6 +159,15 @@ Install now?" \
             if [ ! -z "$description" ];then
               echo "$description" > "${DIRECTORY}/apps/${name}/description"
               echo "Created ${DIRECTORY}/apps/${name}/description"
+            fi
+            
+            #if credits field is populated
+            if [ ! -z "$credits" ];then
+              echo "$credits" > "${DIRECTORY}/apps/${name}/credits"
+              echo "Created ${DIRECTORY}/apps/${name}/credits"
+            elif [ -z "$credits" ] && [ -f "${DIRECTORY}/apps/${name}/credits" ] ;then
+              #clear credits if the user wanted them cleared.
+              echo '' > "${DIRECTORY}/apps/${name}/credits"
             fi
             
             step=$((step+1))
@@ -262,10 +274,10 @@ Or do you want one combined install script?" | yad --text-info --fontname=12 --w
           --text="Now it"\'"s time to make your install-32 and install-64 scripts.
 One of these scripts will be executed when somebody clicks you app"\'"s Install button.
 Two text editors should have openened and you can create your scripts." \
-          --field="Run install-32 script":FBTN "x-terminal-emulator --title="\""Running install-32 script of $name"\"" -e "\""cd $HOME;$'${DIRECTORY}/apps/${name}/install-32';echo 'Closing in 10 seconds.';sleep 10"\" \
-          --field="Shellcheck install-32"!!'Having problems? This utility helps you locate syntax errors.':FBTN "x-terminal-emulator --title="\""Shellcheck"\"" -e "\""shellcheck $'${DIRECTORY}/apps/${name}/install-32';echo 'Press Enter to exit.';read enter"\" \
-          --field="Run install-64 script":FBTN "x-terminal-emulator --title="\""Running install-64 script of $name"\"" -e "\""cd $HOME;$'${DIRECTORY}/apps/${name}/install-64';echo 'Closing in 10 seconds.';sleep 10"\" \
-          --field="Shellcheck install-64"!!'Having problems? This utility helps you locate syntax errors.':FBTN "x-terminal-emulator --title="\""Shellcheck"\"" -e "\""shellcheck $'${DIRECTORY}/apps/${name}/install-64';echo 'Press Enter to exit.';read enter"\" \
+          --field="Run install-32 script":FBTN "${DIRECTORY}/etc/terminal-run "\""cd $HOME;$'${DIRECTORY}/apps/${name}/install-32';echo 'Closing in 10 seconds.';sleep 10"\"" "\""Running install-32 script of $name"\""" \
+          --field="Shellcheck install-32"!!'Having problems? This utility helps you locate syntax errors.':FBTN "${DIRECTORY}/etc/terminal-run "\""shellcheck $'${DIRECTORY}/apps/${name}/install-32';echo 'Press Enter to exit.';read enter"\"" "\""Shellcheck"\""" \
+          --field="Run install-64 script":FBTN "${DIRECTORY}/etc/terminal-run "\""cd $HOME;$'${DIRECTORY}/apps/${name}/install-64';echo 'Closing in 10 seconds.';sleep 10"\"" "\""Running install-64 script of $name"\""" \
+          --field="Shellcheck install-64"!!'Having problems? This utility helps you locate syntax errors.':FBTN "${DIRECTORY}/etc/terminal-run "\""shellcheck $'${DIRECTORY}/apps/${name}/install-64';echo 'Press Enter to exit.';read enter"\"" "\""Shellcheck"\""" \
           --button=Previous!"${DIRECTORY}/icons/back.png":2 \
           --button=Next!"${DIRECTORY}/icons/forward.png":0 \
           2>/dev/null)"
@@ -276,8 +288,8 @@ Two text editors should have openened and you can create your scripts." \
           --title="Create App: Step $step" --window-icon="${DIRECTORY}/icons/logo.png" --center --width=310 --height=$windowheight \
           --text="Now it"\'"s time to make your ${scriptname} script. This will be executed anytime somebody clicks the Install button.
 A text editor should have openened and you can create your install script." \
-          --field="Run script":FBTN "lxterminal --title="\""Running ${scriptname} script of $name"\"" -e "\""cd $HOME;$'${DIRECTORY}/apps/${name}/${scriptname}';echo 'Closing in 10 seconds.';sleep 10"\" \
-          --field="Shellcheck"!!'Having problems? This utility helps you locate syntax errors.':FBTN "lxterminal --title="\""Shellcheck"\"" -e "\""shellcheck $'${DIRECTORY}/apps/${name}/${scriptname}';echo 'Press Enter to exit.';read enter"\" \
+          --field="Run script":FBTN "${DIRECTORY}/etc/terminal-run "\""cd $HOME;$'${DIRECTORY}/apps/${name}/${scriptname}';echo 'Closing in 10 seconds.';sleep 10"\"" "\""Running ${scriptname} script of $name"\""" \
+          --field="Shellcheck"!!'Having problems? This utility helps you locate syntax errors.':FBTN "${DIRECTORY}/etc/terminal-run "\""shellcheck $'${DIRECTORY}/apps/${name}/${scriptname}';echo 'Press Enter to exit.';read enter"\"" "\""Shellcheck"\""" \
           --button=Previous!"${DIRECTORY}/icons/back.png":2 \
           --button=Next!"${DIRECTORY}/icons/forward.png":0 \
           2>/dev/null)"
@@ -312,8 +324,8 @@ A text editor should have openened and you can create your install script." \
         --title="Create App: Step $step" --window-icon="${DIRECTORY}/icons/logo.png" --center --width=310 --height=$windowheight \
         --text='Now it'\''s time to make your uninstall script. This will be executed anytime somebody clicks the Uninstall button.
 A text editor should have openened... Never mind, you know what to do.' \
-        --field="Run script":FBTN "lxterminal --title="\""Running uninstall script of $name"\"" -e "\""cd $HOME;$'${DIRECTORY}/apps/${name}/uninstall';echo 'Closing in 10 seconds.';sleep 10"\" \
-        --field="Shellcheck"!!'Having problems? This utility helps you locate syntax errors.':FBTN "lxterminal --title="\""Shellcheck"\"" -e "\""shellcheck $'${DIRECTORY}/apps/${name}/uninstall';echo 'Press Enter to exit.';read enter"\" \
+        --field="Run script":FBTN "${DIRECTORY}/etc/terminal-run "\""cd $HOME;$'${DIRECTORY}/apps/${name}/uninstall';echo 'Closing in 10 seconds.';sleep 10"\"" "\""Running uninstall script of $name"\""" \
+        --field="Shellcheck"!!'Having problems? This utility helps you locate syntax errors.':FBTN "${DIRECTORY}/etc/terminal-run "\""shellcheck $'${DIRECTORY}/apps/${name}/uninstall';echo 'Press Enter to exit.';read enter"\"" "\""Shellcheck"\""" \
         --button=Previous!"${DIRECTORY}/icons/back.png":2 \
         --button=Next!"${DIRECTORY}/icons/forward.png":0 \
         2>/dev/null)"

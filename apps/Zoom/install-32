@@ -57,7 +57,7 @@ sudo ldconfig
 if [ $dlzoom == 1 ];then
   echo "Downloading Zoom..."
   rm -rf "${HOME}/zoom" ~/zoom_i686.tar.xz
-  wget 'https://zoom.us/client/latest/zoom_i686.tar.xz' || error 'Failed to download Zoom i686!'
+  wget 'https://github.com/Botspot/zoom_686_mirror/raw/main/zoom_i686.tar.xz' || error 'Failed to download Zoom i686!'
   tar -xf ~/zoom_i686.tar.xz || error 'Failed to extract Zoom i686!'
   rm -f ~/zoom_i686.tar.xz #who cares if this fails
 fi
@@ -102,20 +102,15 @@ sudo systemctl restart systemd-binfmt #if this fails, no big deal.
 echo "Creating Application Menu button..."
 echo "[Desktop Entry]
 Name=Zoom
-Exec=lxterminal --title 'Close this window to exit Zoom' -e "\""$HOME/zoom/runzoom.sh"\""
+Exec=${DIRECTORY}/etc/terminal-run "\""$HOME/zoom/runzoom.sh"\"" 'Close this window to exit Zoom'
 Icon=${DIRECTORY}/apps/Zoom/icon-64.png
 Path=${HOME}/zoom/
 Type=Application
 Comment=i386 version of software platform used for teleconferencing using Box86
-Categories=Network;" > ~/.local/share/applications/zoom.desktop
+Categories=Network;
+StartupNotify=true" > ~/.local/share/applications/zoom.desktop
 
 echo "Installation complete!"
-
-#disable pulseaudio autostart
-systemctl --user mask pulseaudio.service pulseaudio.socket
-sudo rm /etc/xdg/autostart/pulseaudio.desktop
-sudo bash -c "echo 'autospawn = no
-daemon-binary = /bin/true' > /etc/pulse/client.conf"
 
 
 

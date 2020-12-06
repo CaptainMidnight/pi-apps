@@ -34,22 +34,35 @@ dirhash() {
   echo "$hash" 1>&2
 }
 if [ "$1" == 'multi-install' ];then
+  failed=0
   PREIFS="$IFS"
   IFS=$'\n'
   for app in $2
   do
     "${DIRECTORY}/manage" install "$app"
+    if [ $? != 0 ];then
+      failed=1
+    fi
   done
   IFS="$PREIFS"
+  if [ $failed == 1 ];then
+    exit 1
+  fi
 elif [ "$1" == 'multi-uninstall' ];then
+  failed=0
   PREIFS="$IFS"
   IFS=$'\n'
   for app in $2
   do
     "${DIRECTORY}/manage" uninstall "$app"
+    if [ $? != 0 ];then
+      failed=1
+    fi
   done
   IFS="$PREIFS"
-  
+  if [ $failed == 1 ];then
+    exit 1
+  fi
 elif [ "$1" == 'install' ];then
   #INSTALL
   #for this operation, a program name must be specified.
@@ -58,14 +71,6 @@ elif [ "$1" == 'install' ];then
     error "For this operation, you must specify which app to operate on."
   elif [ ! -d "${DIRECTORY}/apps/$app" ];then
     error "${DIRECTORY}/apps/$app does not exist!"
-  fi
-  #ensure an install script is not already running
-  if ps -C install &>/dev/null || ps -C install-32 &>/dev/null || ps -C install-64 &>/dev/null;then       
-    echo "An install script is already running.
-Pi-Apps will wait until that one finishes before installing $app." | yad --text-info \
-    --title="Waiting" --window-icon="${DIRECTORY}/icons/logo.png" --center --width=500 --height=100 \
-    --button=OK!"${DIRECTORY}/icons/check.png":0 --fontname=12 --timeout=10 --timeout-indicator=top
-    while ps -C install &>/dev/null || ps -C install-32 &>/dev/null || ps -C install-64 &>/dev/null;do sleep 1; done
   fi
   
   #if already installed then ask for confirmation
@@ -76,15 +81,7 @@ Pi-Apps will wait until that one finishes before installing $app." | yad --text-
   fi
   
   #analytics
-  if [ "$(cat "${DIRECTORY}/data/settings/Enable analytics")" == 'Yes' ];then
-    #this is used to let Botspot see the daily installs for each app.
-    #Botspot created an individual bitly link for each app. When you install an app, the cooresponding bit.ly link is "clicked" by a headless chromium-browser instance.
-    #Chromium accesses the bit.ly link, then exits.
-    #Allowing analytics does not identify you, or any personal information about you. Botspot can only see the number of "clicks" per day, as well as the top 10 countries of origin.
-    
-    bitlylink="https://bit.ly/pi-apps-install-$(echo "$app" | tr -d ' ' | sed 's/[^a-zA-Z]//g')"
-    chromium-browser --headless "$bitlylink" &>/dev/null &
-  fi
+  "${DIRECTORY}/etc/bitlylink" "$app" install
   
   #determine which script to run
   if [ -f "${DIRECTORY}/apps/${app}/install-32" ] && [ $arch == 32 ];then
@@ -120,14 +117,6 @@ elif [ "$1" == 'uninstall' ];then
   elif [ ! -d "${DIRECTORY}/apps/$app" ];then
     error "${DIRECTORY}/apps/$app does not exist!"
   fi
-  #ensure an uninstall script is not already running
-  if ps -C uninstall &>/dev/null;then       
-    echo "An uninstall script is already running.
-Pi-Apps will wait until that one finishes before starting this one." | yad --text-info \
-    --title="Waiting" --window-icon="${DIRECTORY}/icons/logo.png" --center --width=500 --height=100 \
-    --button=OK!"${DIRECTORY}/icons/check.png":0 --fontname=12 --timeout=10 --timeout-indicator=top
-    while ps -C uninstall &>/dev/null;do sleep 1; done
-  fi
   
   #if already uninstalled then ask for confirmation
   if [ "$(cat "${DIRECTORY}/data/status/${app}" )" == 'uninstalled' ];then
@@ -135,6 +124,9 @@ Pi-Apps will wait until that one finishes before starting this one." | yad --tex
     --text-align=center --center --title='Quick question' --window-icon="${DIRECTORY}/icons/logo.png" \
     --button=No!"${DIRECTORY}/icons/exit.png":1 --button=Yes!"${DIRECTORY}/icons/check.png":0 || exit 0
   fi
+  
+  #analytics
+  "${DIRECTORY}/etc/bitlylink" "$app" uninstall
   
   echo -e "\e[96mUninstalling $app\e[39m"
   cd $HOME

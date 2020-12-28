@@ -9,7 +9,7 @@ function error {
 
 #if your app installs any packages, keep this command here so those packages will be removed.
 "${DIRECTORY}/purge-installed" "$(dirname "$0")" || exit 1
-
-rm ~/PrusaSlicer.AppImage ~/.local/share/applications/PrusaSlicer.desktop
+rm -rf ~/idea_ic 2>/dev/null
+rm ~/.local/share/applications/intellijidea.desktop
 
 exit 0
